@@ -407,3 +407,14 @@ router.delete('/usuario/:id', authAPI, async (req, res) => {
 });
 
 module.exports = router;
+
+// Endpoint de prueba de conexión a BD (sin autenticación para pruebas)
+router.get('/test-db', async (req, res) => {
+  try {
+    const [result] = await pool.execute('SELECT 1 as connected, NOW() as time');
+    res.json({ success: true, message: 'Conexión exitosa', data: result });
+  } catch (error) {
+    console.error('Error de conexión a BD:', error);
+    res.status(500).json({ success: false, error: error.message, code: error.code });
+  }
+});
