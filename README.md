@@ -31,4 +31,4 @@ Desplegado en Render.com con base de datos en Aiven.io
 
 ## Autor
 
-Argueta Aguilera Pablo Eduardo - tu@email.com
+Argueta Aguilera Pablo Eduardo - pabloarguet60@outlook.es
