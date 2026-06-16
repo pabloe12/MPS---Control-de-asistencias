@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios - Control Asistencias</title>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+    <%- include('partials/navbar') %>
+    <main class="container mt-4 main-content">
+        <h2 class="mb-4 heading-color">Gestión de usuarios</h2>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-light-custom"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" placeholder="Buscar por nombre o ID" id="busquedaUsuario">
+                </div>
+            </div>
+            <div class="col-md-3 text-end">
+                <a href="/registro-usuario" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Nuevo</a>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead><tr><th>ID</th><th>Nombre</th><th>Acciones</th></tr></thead>
+                    <tbody id="tablaUsuarios"><tr><td colspan="3" class="text-center">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+    <!-- Modal Editar -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Editar Usuario</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <form id="editForm">
+              <input type="hidden" id="editId">
+              <div class="mb-3"><label>Nombre(s)</label><input type="text" id="editNombre" class="form-control" required></div>
+              <div class="mb-3"><label>Apellido Paterno</label><input type="text" id="editApellidoP" class="form-control" required></div>
+              <div class="mb-3"><label>Apellido Materno</label><input type="text" id="editApellidoM" class="form-control" required></div>
+              <div class="mb-3"><label>Nueva Contraseña (dejar vacío para no cambiar)</label><input type="password" id="editPassword" class="form-control"></div>
+            </form>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="saveEditBtn">Guardar</button></div>
+        </div>
+      </div>
+    </div>
+    <br>
+    <%- include('partials/footer') %>
+    <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function cargarUsuarios() {
+            try {
+                const res = await fetch('/api/usuario');
+                const usuarios = await res.json();
+                const tbody = document.getElementById('tablaUsuarios');
+                tbody.innerHTML = usuarios.map(u => `
+                    <tr>
+                        <td>${u.matriculaU}</td>
+                        <td>${u.nombreU} ${u.apellidoP_Usuario} ${u.apellidoM_Usuario}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary btn-editar" data-id="${u.matriculaU}" data-nombre="${u.nombreU}" data-ap="${u.apellidoP_Usuario}" data-am="${u.apellidoM_Usuario}"><i class="bi bi-pencil"></i> Editar</button>
+                            <button class="btn btn-sm btn-outline-danger btn-eliminar" data-id="${u.matriculaU}"><i class="bi bi-trash"></i> Eliminar</button>
+                        </td>
+                    </tr>
+                `).join('');
+                // Editar
+                document.querySelectorAll('.btn-editar').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.getElementById('editId').value = btn.dataset.id;
+                        document.getElementById('editNombre').value = btn.dataset.nombre;
+                        document.getElementById('editApellidoP').value = btn.dataset.ap;
+                        document.getElementById('editApellidoM').value = btn.dataset.am;
+                        document.getElementById('editPassword').value = '';
+                        new bootstrap.Modal(document.getElementById('editModal')).show();
+                    });
+                });
+                // Eliminar
+                document.querySelectorAll('.btn-eliminar').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        if(confirm('¿Eliminar usuario?')) {
+                            await fetch(`/api/usuario/${btn.dataset.id}`, { method: 'DELETE' });
+                            cargarUsuarios();
+                        }
+                    });
+                });
+            } catch(err) {
+                document.getElementById('tablaUsuarios').innerHTML = '<tr><td colspan="3">Error al cargar usuarios.</td></tr>';
+            }
+        }
+        document.getElementById('saveEditBtn').addEventListener('click', async () => {
+            const id = document.getElementById('editId').value;
+            const data = {
+                nombre: document.getElementById('editNombre').value,
+                apellidoP: document.getElementById('editApellidoP').value,
+                apellidoM: document.getElementById('editApellidoM').value,
+                contrasena: document.getElementById('editPassword').value
+            };
+            const res = await fetch(`/api/usuario/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+                cargarUsuarios();
+            } else alert('Error al actualizar');
+        });
+        document.addEventListener('DOMContentLoaded', cargarUsuarios);
+    </script>
+</body>
+</html>

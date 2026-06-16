@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistencias - Control Asistencias</title>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <%- include('partials/navbar') %>
+    <main class="container mt-4 main-content">
+        <h2 class="mb-4 heading-color">Asistencias del día</h2>
+        <!-- Filtros -->
+        <div class="row mb-3 align-items-end">
+            <div class="col-md-3">
+                <label for="filterGrado" class="form-label heading-color">Grado</label>
+                <select id="filterGrado" class="form-select"><option value="all">Cargando...</option></select>
+            </div>
+            <div class="col-md-3">
+                <label for="filterGrupo" class="form-label heading-color">Grupo</label>
+                <select id="filterGrupo" class="form-select"><option value="all">Cargando...</option></select>
+            </div>
+            <div class="col-md-3">
+                <label for="filterDate" class="form-label heading-color">Fecha</label>
+                <input type="date" id="filterDate" class="form-control" value="<%= new Date().toISOString().slice(0,10) %>">
+            </div>
+            <div class="col-md-3">
+                <label for="filterTime" class="form-label heading-color">Hora</label>
+                <div class="input-group">
+                    <input type="time" id="filterTime" class="form-control" value="08:00">
+                    <select id="timeComparison" class="form-select">
+                        <option value="after" selected>Después</option>
+                        <option value="before">Antes</option>
+                        <option value="at">Exacto</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de asistencias -->
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead><tr><th>#</th><th>Nombre</th><th>Grupo</th><th>Hora entrada</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="tablaAsistencias"><tr><td colspan="6" class="text-center">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Gráfica y estadísticas -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card p-3">
+                    <div class="card-header"><h5 class="mb-0">Distribución de estados</h5></div>
+                    <div class="card-body text-center">
+                        <canvas id="graficaPastel" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card p-3">
+                    <div class="card-header"><h5 class="mb-0">Estadística rápida</h5></div>
+                    <ul class="list-group list-group-flush" id="estadisticas">
+                        <li class="list-group-item d-flex justify-content-between">Presentes <span class="badge bg-success">0</span></li>
+                        <li class="list-group-item d-flex justify-content-between">Faltas <span class="badge bg-danger">0</span></li>
+                        <li class="list-group-item d-flex justify-content-between">Retardos <span class="badge bg-warning">0</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Editar Asistencia -->
+    <div class="modal fade" id="editAsistenciaModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header"><h5>Editar estado de asistencia</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <input type="hidden" id="editAsistenciaId">
+            <label>Nuevo estado</label>
+            <select id="editEstado" class="form-select">
+              <option value="presente">Presente</option>
+              <option value="falta">Falta</option>
+              <option value="retardo">Retardo</option>
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="guardarEditAsistencia">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+<br>
+    <%- include('partials/footer') %>
+    <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const filterGrado = document.getElementById('filterGrado');
+        const filterGrupo = document.getElementById('filterGrupo');
+        const filterDate = document.getElementById('filterDate');
+        const filterTime = document.getElementById('filterTime');
+        const timeComparison = document.getElementById('timeComparison');
+        let pieChart = null;
+
+        async function cargarFiltros() {
+            const res = await fetch('/api/grupos');
+            const { grados, grupos } = await res.json();
+            filterGrado.innerHTML = '<option value="all">Todos</option>' + grados.map(g => `<option value="${g.replace('°','')}">${g}</option>`).join('');
+            filterGrupo.innerHTML = '<option value="all">Todos</option>' + grupos.map(g => `<option value="${g.split(' ')[1]}">${g}</option>`).join('');
+        }
+
+        async function fetchAsistencias() {
+            const params = new URLSearchParams({
+                grado: filterGrado.value,
+                grupo: filterGrupo.value,
+                fecha: filterDate.value,
+                hora: filterTime.value,
+                timeComparison: timeComparison.value
+            });
+            try {
+                const res = await fetch('/api/asistencia?' + params);
+                const data = await res.json();
+                renderTable(data);
+                updatePieChart(data);
+            } catch (err) {
+                document.getElementById('tablaAsistencias').innerHTML = '<tr><td colspan="6">Error al cargar</td></tr>';
+            }
+        }
+
+        function renderTable(rows) {
+            const tbody = document.getElementById('tablaAsistencias');
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">Sin registros</td></tr>';
+                return;
+            }
+            tbody.innerHTML = rows.map((row, i) => {
+                let colorEstado = 'secondary';
+                if (row.estado === 'presente') colorEstado = 'success';
+                else if (row.estado === 'retardo') colorEstado = 'warning';
+                else if (row.estado === 'falta') colorEstado = 'danger';
+                return `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${row.nombreA} ${row.apellidoP_Alumno} ${row.apellidoM_Alumno}</td>
+                        <td>${row.grupo}</td>
+                        <td>${row.hora_entrada || ''}</td>
+                        <td><span class="badge bg-${colorEstado}">${row.estado}</span></td>
+                        <td><button class="btn btn-sm btn-outline-primary btn-editar" data-id="${row.id_asistencia}" data-estado="${row.estado}"><i class="bi bi-pencil"></i></button></td>
+                    </tr>
+                `;
+            }).join('');
+            const presentes = rows.filter(r => r.estado === 'presente').length;
+            const faltas = rows.filter(r => r.estado === 'falta').length;
+            const retardos = rows.filter(r => r.estado === 'retardo').length;
+            document.getElementById('estadisticas').innerHTML = `
+                <li class="list-group-item d-flex justify-content-between">Presentes <span class="badge bg-success">${presentes}</span></li>
+                <li class="list-group-item d-flex justify-content-between">Faltas <span class="badge bg-danger">${faltas}</span></li>
+                <li class="list-group-item d-flex justify-content-between">Retardos <span class="badge bg-warning">${retardos}</span></li>
+            `;
+            // Agregar eventos a botones editar
+            document.querySelectorAll('.btn-editar').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById('editAsistenciaId').value = btn.dataset.id;
+                    document.getElementById('editEstado').value = btn.dataset.estado;
+                    new bootstrap.Modal(document.getElementById('editAsistenciaModal')).show();
+                });
+            });
+        }
+
+        function updatePieChart(rows) {
+            const presentes = rows.filter(r => r.estado === 'presente').length;
+            const faltas = rows.filter(r => r.estado === 'falta').length;
+            const retardos = rows.filter(r => r.estado === 'retardo').length;
+            const ctx = document.getElementById('graficaPastel').getContext('2d');
+            if (pieChart) pieChart.destroy();
+            pieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Presentes', 'Faltas', 'Retardos'],
+                    datasets: [{ data: [presentes, faltas, retardos], backgroundColor: ['#198754', '#dc3545', '#ffc107'] }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        document.getElementById('guardarEditAsistencia').addEventListener('click', async () => {
+            const id = document.getElementById('editAsistenciaId').value;
+            const estado = document.getElementById('editEstado').value;
+            const res = await fetch(`/api/asistencia/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado })
+            });
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('editAsistenciaModal')).hide();
+                fetchAsistencias();
+            } else alert('Error al actualizar');
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarFiltros().then(() => fetchAsistencias());
+            filterGrado.addEventListener('change', fetchAsistencias);
+            filterGrupo.addEventListener('change', fetchAsistencias);
+            filterDate.addEventListener('change', fetchAsistencias);
+            filterTime.addEventListener('change', fetchAsistencias);
+            timeComparison.addEventListener('change', fetchAsistencias);
+        });
+    </script>
+</body>
+</html>

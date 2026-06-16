@@ -1,0 +1,197 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #F5EFEB;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.main-content {
+    flex: 1;
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.05);
+    border: none;
+}
+.card-header {
+    background-color: #C8D9E6;
+    color: #2F4156;
+    border-radius: 10px 10px 0 0 !important;
+    padding: 1rem;
+}
+.btn-primary {
+    background-color: #567C8D;
+    border-color: #567C8D;
+}
+.btn-primary:hover {
+    background-color: #2F4156;
+    border-color: #2F4156;
+}
+.btn-outline-primary {
+    color: #567C8D;
+    border-color: #567C8D;
+}
+.btn-outline-primary:hover {
+    background-color: #567C8D;
+    border-color: #567C8D;
+    color: white;
+}
+.btn-print {
+    color: #567C8D;
+    border-color: #567C8D;
+}
+.btn-print:hover {
+    background-color: gold;
+    border-color: #567C8D;
+    color: black;
+}
+.text-primary {
+    color: #2F4156 !important;
+}
+.bg-light-custom {
+    background-color: #C8D9E6;
+}
+.fingerprint-panel {
+    border: 1px solid #D8E4EE;
+    background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,250,255,0.95));
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+.fingerprint-panel i.bi-fingerprint {
+    font-size: 3rem;
+}
+.fingerprint-panel #captureStatus {
+    font-weight: 500;
+}
+.footer {
+    background-color: #2F4156;
+    color: white;
+}
+
+/* Login Page Styles */
+.wallpaper-container {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    z-index: 0;
+}
+
+.wallpaper-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    transition: opacity 1s ease;
+    opacity: 0;
+}
+
+.wallpaper-layer.active {
+    opacity: 1;
+}
+
+.wallpaper-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.1);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.wallpaper-content {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+}
+
+.login-container {
+    min-height: 100vh;
+}
+
+.login-card {
+    background-color: #FFFFFF;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.login-header {
+    background-color: #C8D9E6;
+    border-radius: 10px 10px 0 0;
+    padding: 20px;
+    text-align: center;
+}
+
+.login-header h4 {
+    color: #2F4156;
+}
+
+.btn-login {
+    background-color: #567C8D;
+    border: none;
+    color: white;
+}
+
+.btn-login:hover {
+    background-color: #2F4156;
+    color: white;
+}
+
+.heading-color {
+    color: #2F4156;
+}
+
+/* Icon colors */
+.icon-primary {
+    color: #567C8D;
+}
+
+.icon-heading {
+    color: #2F4156;
+}
+
+/* Form elements */
+.form-label.heading-color {
+    color: #2F4156;
+}
+
+/* Common utility classes */
+.text-heading {
+    color: #2F4156;
+}
+
+.hidden-element {
+    display: none;
+    color: #2F4156;
+}
+
+/* Footer styles */
+.footer-custom {
+    background-color: #C8D9E6;
+    flex-shrink: 0;
+}
+
+/* Navbar styles */
+nav {
+    background-color: #2f4156;
+}
+/* Especific content styles */
+.main-content {
+    background-color: #f8feff;
+    border-radius: 10px;
+    padding: 20px;
+}
+.hidden-element {
+    display: none;
+    color: #2F4156;
+}

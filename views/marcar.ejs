@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marcar Asistencia - Control Asistencias</title>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+    <%- include('partials/navbar') %>
+    <main class="container mt-4 main-content">
+        <h2 class="mb-4 heading-color">Marcar asistencia</h2>
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-fingerprint fs-1 icon-primary"></i>
+                <p class="mt-3">Coloca tu dedo en el lector o ingresa tu matrícula manualmente</p>
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <input type="text" id="matricula" class="form-control form-control-lg text-center" placeholder="Matrícula">
+                        <button id="btnRegistrar" class="btn btn-primary btn-lg mt-3 w-100">Registrar asistencia</button>
+                    </div>
+                </div>
+                <div id="mensaje" class="mt-4"></div>
+            </div>
+        </div>
+    </main>
+    <br>
+    <%- include('partials/footer') %>
+    <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('btnRegistrar').addEventListener('click', async () => {
+            const matricula = document.getElementById('matricula').value.trim();
+            if (!matricula) {
+                alert('Ingrese la matrícula');
+                return;
+            }
+            const res = await fetch('/api/asistencia', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ matriculaA: matricula, estado: 'presente' })
+            });
+            const data = await res.json();
+            const msgDiv = document.getElementById('mensaje');
+            if (res.ok) {
+                msgDiv.innerHTML = '<div class="alert alert-success">✅ Asistencia registrada correctamente</div>';
+                document.getElementById('matricula').value = '';
+            } else {
+                msgDiv.innerHTML = `<div class="alert alert-danger">❌ Error: ${data.error || 'No se pudo registrar'}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>

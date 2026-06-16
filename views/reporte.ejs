@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes - Control Asistencias</title>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+
+<body>
+    <%- include('partials/navbar') %>
+        <main class="container mt-4 main-content">
+            <h2 class="mb-4 heading-color">Reportes de asistencia</h2>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Generar reporte semanal por grupo</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formReporte">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Grupo</label>
+                                <select class="form-select" name="grupo" id="grupo" required>
+                                    <option value="">Cargando grupos...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Semana del</label>
+                                <input type="date" class="form-control" name="fechaInicio" id="fechaInicio" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Semana al</label>
+                                <input type="date" class="form-control" name="fechaFin" id="fechaFin" required>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button type="button" id="btnVerReporte" class="btn btn-primary"><i class="bi bi-eye"></i>
+                                Ver reporte</button>
+                            <button type="button" id="btnDescargar" class="btn btn-success"><i
+                                    class="bi bi-file-pdf"></i> Descargar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4" id="vistaPrevia" style="display:none;">
+                <div class="card-header">
+                    <h5 class="mb-0" id="tituloReporte">Vista previa</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm" id="tablaReporte">
+                        <!-- llenado dinámico -->
+                    </table>
+                    <div class="mt-4">
+                        <button type="button" id="btnDescargarPreview" class="btn btn-success"><i class="bi bi-file-pdf"></i>
+                            Descargar PDF</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <br>
+        <%- include('partials/footer') %>
+            <script src="/assets/js/bootstrap.bundle.min.js"></script>
+            <script>
+                // a) Poblar el selector de grupos dinámicamente
+                async function cargarGrupos() {
+                    try {
+                        const res = await fetch('/api/estudiante');
+                        const estudiantes = await res.json();
+                        const grupos = [...new Set(estudiantes.map(e => e.grupo))];
+                        const select = document.getElementById('grupo');
+                        select.innerHTML = '<option value="">Seleccione grupo</option>' +
+                            grupos.map(g => `<option value="${g}">${g}</option>`).join('');
+                    } catch (error) {
+                        console.error('Error al cargar grupos:', error);
+                    }
+                }
+
+                // b) Implementar botón "Ver reporte"
+                document.getElementById('btnVerReporte').addEventListener('click', async () => {
+                    const grupo = document.getElementById('grupo').value;
+                    const inicio = document.getElementById('fechaInicio').value;
+                    const fin = document.getElementById('fechaFin').value;
+
+                    if (!grupo || !inicio || !fin) {
+                        return alert('Por favor, complete todos los campos (Grupo, Fecha Inicio y Fin)');
+                    }
+
+                    try {
+                        const res = await fetch(`/api/reporte/semanal?grupo=${encodeURIComponent(grupo)}&fechaInicio=${inicio}&fechaFin=${fin}`);
+                        const data = await res.json();
+                        mostrarReporte(data, grupo, inicio, fin);
+                    } catch (error) {
+                        alert('Error al obtener los datos del reporte');
+                    }
+                });
+
+                // e) Asegurar que la descarga de PDF funcione con validación
+                document.getElementById('btnDescargar').addEventListener('click', () => {
+                    const grupo = document.getElementById('grupo').value;
+                    if (!grupo) return alert('Seleccione un grupo para descargar el reporte');
+
+                    const form = document.getElementById('formReporte');
+                    const formData = new FormData(form);
+                    const params = new URLSearchParams(formData);
+                    window.open(`/api/reporte/semanal/pdf?${params}`, '_blank');
+                });
+
+                // d) Evento para el botón de descarga en la vista previa
+                document.getElementById('btnDescargarPreview').addEventListener('click', () => {
+                    document.getElementById('btnDescargar').click();
+                });
+
+                // Cargar grupos al iniciar
+                document.addEventListener('DOMContentLoaded', cargarGrupos);
+
+                function mostrarReporte(datos, grupo, inicio, fin) {
+                    document.getElementById('tituloReporte').textContent = `Vista previa - Asistencias ${grupo} (${inicio} / ${fin})`;
+                    // Procesar datos para construir tabla por alumno/día (ejemplo básico)
+                    const alumnos = {};
+                    datos.forEach(d => {
+                        const key = d.matriculaA;
+                        if (!alumnos[key]) {
+                            alumnos[key] = { nombre: `${d.nombreA} ${d.apellidoP_Alumno}`, fechas: {} };
+                        }
+                        alumnos[key].fechas[d.fecha] = d.estado;
+                    });
+                    let html = '<thead><tr><th>Alumno</th>';
+                    // Generar columnas de días (de inicio a fin)
+                    let current = new Date(inicio);
+                    const end = new Date(fin);
+                    const dias = [];
+                    while (current <= end) {
+                        const fechaStr = current.toISOString().slice(0, 10);
+                        dias.push(fechaStr);
+                        html += `<th>${current.toLocaleDateString('es-MX', { weekday: 'short' })}</th>`;
+                        current.setDate(current.getDate() + 1);
+                    }
+                    html += '<th>%</th></tr></thead><tbody>';
+                    for (let mat in alumnos) {
+                        const alumno = alumnos[mat];
+                        html += `<tr><td>${alumno.nombre}</td>`;
+                        let presentes = 0;
+                        dias.forEach(fecha => {
+                            const estado = alumno.fechas[fecha] || 'F';
+                            if (estado === 'presente') presentes++;
+                            html += `<td>${estado === 'presente' ? 'P' : 'F'}</td>`;
+                        });
+                        const porcentaje = ((presentes / dias.length) * 100).toFixed(0);
+                        html += `<td>${porcentaje}%</td></tr>`;
+                    }
+                    html += '</tbody>';
+                    document.getElementById('tablaReporte').innerHTML = html;
+                    document.getElementById('vistaPrevia').style.display = 'block';
+                }
+            </script>
+</body>
+
+</html>

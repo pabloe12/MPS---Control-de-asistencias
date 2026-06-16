@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Estudiante - Control Asistencias</title>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+
+<body>
+    <%- include('partials/navbar') %>
+        <main class="container mt-4 main-content">
+            <h2 class="mb-4 heading-color">Registro de nuevo estudiante</h2>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Datos personales</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formRegistro">
+                        <!-- Dentro del form#formRegistro -->
+                        <div class="row g-3">
+                            <!-- Datos del alumno -->
+                            <div class="col-md-6">
+                                <label class="form-label">Nombre(s) del alumno</label>
+                                <input type="text" class="form-control" name="nombreA" placeholder="Ej. Juan" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Apellido Paterno</label>
+                                <input type="text" class="form-control" name="apellidoPA" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Apellido Materno</label>
+                                <input type="text" class="form-control" name="apellidoMA" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Matrícula</label>
+                                <input type="text" class="form-control" name="matricula" placeholder="2022150480067"
+                                    required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Grupo</label>
+                                <input type="text" class="form-control" name="grupo" placeholder="Ej. 5°A" required>
+                            </div>
+
+                            <!-- Separador visual -->
+                            <div class="col-12">
+                                <hr>
+                            </div>
+                            <div class="col-12">
+                                <h5 class="mb-3">Datos del tutor</h5>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Nombre(s) del tutor</label>
+                                <input type="text" class="form-control" name="tutor_nombre" placeholder="Ej. Juan"
+                                    required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Apellido Paterno</label>
+                                <input type="text" class="form-control" name="tutor_apellidoP" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Apellido Materno</label>
+                                <input type="text" class="form-control" name="tutor_apellidoM" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Teléfono</label>
+                                <input type="text" class="form-control" name="tutor_telefono" placeholder="55 1234 5678"
+                                    required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">ID de Telegram</label>
+                                <input type="text" class="form-control" name="tutor_telegram" placeholder="12345ASD">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Parentesco</label>
+                                <input type="text" class="form-control" name="tutor_parentesco"
+                                    placeholder="Ej. Padre, Madre, Tío" required>
+                            </div>
+                        </div>
+                        <hr class="my-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Registro de huella dactilar</h5>
+                        </div>
+                        <div class="fingerprint-panel text-center p-4 border rounded bg-white shadow-sm">
+                            <i class="bi bi-fingerprint fs-1 icon-primary"></i>
+                            <p class="mt-2 mb-3 text-heading">Coloca el dedo en el sensor para capturar la huella</p>
+                            <button id="btnStartCapture" type="button"
+                                class="btn btn-outline-primary btn-sm me-2">Iniciar captura</button>
+                            <button id="btnCancelCapture" type="button"
+                                class="btn btn-outline-secondary btn-sm">Cancelar captura</button>
+                            <div id="captureStatus" class="mt-3 text-start hidden-element"></div>
+                        </div>
+                        <div class="mt-4 text-end">
+                            <button type="reset" class="btn btn-secondary me-2">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Guardar estudiante</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+        <br>
+        <%- include('partials/footer') %>
+            <script src="/assets/js/bootstrap.bundle.min.js"></script>
+            <script>
+                // Manejo del envío del formulario vía AJAX
+                document.getElementById('formRegistro').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const form = e.target;
+                    const formData = new FormData(form);
+                    const data = Object.fromEntries(formData.entries());
+                    try {
+                        const res = await fetch('/api/estudiante', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                        if (res.ok) {
+                            alert('Estudiante registrado correctamente');
+                            window.location.href = '/estudiante';
+                        } else {
+                            const err = await res.json();
+                            alert('Error: ' + (err.error || 'No se pudo guardar'));
+                        }
+                    } catch (error) {
+                        alert('Error de conexión');
+                    }
+                });
+
+                // Simulación del lector de huella (ya existente)
+                document.getElementById('btnStartCapture').addEventListener('click', function () {
+                    var status = document.getElementById('captureStatus');
+                    status.style.display = 'block';
+                    status.textContent = 'Escaneando huella... Mantén el dedo en el sensor';
+                    status.style.color = '#0d6efd';
+                    setTimeout(function () {
+                        status.textContent = 'Huella capturada con éxito';
+                        status.style.color = '#198754';
+                    }, 1400);
+                });
+                document.getElementById('btnCancelCapture').addEventListener('click', function () {
+                    var status = document.getElementById('captureStatus');
+                    status.style.display = 'block';
+                    status.textContent = 'Captura cancelada';
+                    status.style.color = '#dc3545';
+                });
+            </script>
+</body>
+
+</html>

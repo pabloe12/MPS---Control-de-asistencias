@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Usuarios - Control Asistencias</title>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+    <%- include('partials/navbar') %>
+    <main class="container mt-4 main-content">
+        <h2 class="mb-4 heading-color">Registro de nuevo usuario</h2>
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">Datos personales</h5></div>
+            <div class="card-body">
+                <form id="formRegistro">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre(s)</label>
+                            <input type="text" class="form-control" name="nombre" placeholder="Ej. Juan" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Apellido Paterno</label>
+                            <input type="text" class="form-control" name="apellidoP" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Apellido Materno</label>
+                            <input type="text" class="form-control" name="apellidoM" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contraseña</label>
+                            <input type="password" class="form-control" name="contrasena" placeholder="12345678" required>
+                        </div>
+                    <div class="mt-4 text-end">
+                        <button type="reset" class="btn btn-secondary me-2">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+    <br>
+    <%- include('partials/footer') %>
+    <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Manejo del envío del formulario vía AJAX
+        document.getElementById('formRegistro').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            try {
+                const res = await fetch('/api/usuario', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    alert('Usuario registrado correctamente');
+                    window.location.href = '/usuarios';
+                } else {
+                    const err = await res.json();
+                    alert('Error: ' + (err.error || 'No se pudo guardar'));
+                }
+            } catch (error) {
+                alert('Error de conexión');
+            }
+        });
+    </script>
+</body>
+</html>

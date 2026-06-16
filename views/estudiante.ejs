@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudiantes - Control Asistencias</title>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+    <%- include('partials/navbar') %>
+    <main class="container mt-4 main-content">
+        <h2 class="mb-4 heading-color">Gestión de estudiantes</h2>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-light-custom"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" placeholder="Buscar por nombre o matrícula..." id="busqueda">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filtroGrupo"><option value="">Todos los grupos</option></select>
+            </div>
+            <div class="col-md-3 text-end">
+                <a href="/registro" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Nuevo</a>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead><tr><th>Matrícula</th><th>Nombre</th><th>Grupo</th><th>Acciones</th></tr></thead>
+                    <tbody id="tablaEstudiantes"><tr><td colspan="4" class="text-center">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Editar Estudiante -->
+    <div class="modal fade" id="editEstudianteModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header"><h5>Editar Estudiante</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <form id="editEstudianteForm">
+              <input type="hidden" id="editMatricula">
+              <div class="mb-3"><label>Nombre(s)</label><input type="text" id="editNombreA" class="form-control" required></div>
+              <div class="mb-3"><label>Apellido Paterno</label><input type="text" id="editApellidoPA" class="form-control" required></div>
+              <div class="mb-3"><label>Apellido Materno</label><input type="text" id="editApellidoMA" class="form-control" required></div>
+              <div class="mb-3"><label>Grupo</label><input type="text" id="editGrupo" class="form-control" required></div>
+            </form>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="saveEstudianteBtn">Guardar</button></div>
+        </div>
+      </div>
+    </div>
+<br>
+    <%- include('partials/footer') %>
+    <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let estudiantesData = [];
+        async function cargarEstudiantes() {
+            try {
+                const res = await fetch('/api/estudiante');
+                estudiantesData = await res.json();
+                const gruposSet = [...new Set(estudiantesData.map(e => e.grupo))];
+                document.getElementById('filtroGrupo').innerHTML = '<option value="">Todos los grupos</option>' + gruposSet.map(g => `<option value="${g}">${g}</option>`).join('');
+                renderTabla();
+            } catch (err) {
+                document.getElementById('tablaEstudiantes').innerHTML = '<tr><td colspan="4">Error al cargar estudiantes.</td></tr>';
+            }
+        }
+        function renderTabla() {
+            const busqueda = document.getElementById('busqueda').value.toLowerCase();
+            const grupoFiltro = document.getElementById('filtroGrupo').value;
+            const filtered = estudiantesData.filter(est => {
+                const nombreCompleto = `${est.nombreA} ${est.apellidoP_Alumno} ${est.apellidoM_Alumno}`.toLowerCase();
+                const matchBusqueda = est.matriculaA.toString().includes(busqueda) || nombreCompleto.includes(busqueda);
+                const matchGrupo = grupoFiltro === '' || est.grupo === grupoFiltro;
+                return matchBusqueda && matchGrupo;
+            });
+            const tbody = document.getElementById('tablaEstudiantes');
+            tbody.innerHTML = filtered.map(est => `
+                <tr>
+                    <td>${est.matriculaA}</td>
+                    <td>${est.nombreA} ${est.apellidoP_Alumno} ${est.apellidoM_Alumno}</td>
+                    <td>${est.grupo}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary btn-editar" data-mat="${est.matriculaA}" data-nom="${est.nombreA}" data-ap="${est.apellidoP_Alumno}" data-am="${est.apellidoM_Alumno}" data-grupo="${est.grupo}"><i class="bi bi-pencil"></i> Editar</button>
+                        <button class="btn btn-sm btn-outline-danger btn-eliminar" data-mat="${est.matriculaA}"><i class="bi bi-trash"></i> Eliminar</button>
+                    </td>
+                </tr>
+            `).join('');
+            // Eventos editar
+            document.querySelectorAll('.btn-editar').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById('editMatricula').value = btn.dataset.mat;
+                    document.getElementById('editNombreA').value = btn.dataset.nom;
+                    document.getElementById('editApellidoPA').value = btn.dataset.ap;
+                    document.getElementById('editApellidoMA').value = btn.dataset.am;
+                    document.getElementById('editGrupo').value = btn.dataset.grupo;
+                    new bootstrap.Modal(document.getElementById('editEstudianteModal')).show();
+                });
+            });
+            // Eventos eliminar
+            document.querySelectorAll('.btn-eliminar').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if(confirm('¿Eliminar estudiante? También se borrarán sus asistencias.')) {
+                        await fetch(`/api/estudiante/${btn.dataset.mat}`, { method: 'DELETE' });
+                        cargarEstudiantes();
+                    }
+                });
+            });
+        }
+        document.getElementById('saveEstudianteBtn').addEventListener('click', async () => {
+            const mat = document.getElementById('editMatricula').value;
+            const data = {
+                nombreA: document.getElementById('editNombreA').value,
+                apellidoPA: document.getElementById('editApellidoPA').value,
+                apellidoMA: document.getElementById('editApellidoMA').value,
+                grupo: document.getElementById('editGrupo').value
+            };
+            const res = await fetch(`/api/estudiante/${mat}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('editEstudianteModal')).hide();
+                cargarEstudiantes();
+            } else alert('Error al actualizar');
+        });
+        document.getElementById('busqueda').addEventListener('input', renderTabla);
+        document.getElementById('filtroGrupo').addEventListener('change', renderTabla);
+        document.addEventListener('DOMContentLoaded', cargarEstudiantes);
+    </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<nav class="navbar navbar-expand-lg">
+    <div class="container">
+        <a class="navbar-brand text-white" href="/dashboard">
+            <img src="/media/logo/logo.png" alt="Logo" height="40" class="d-inline-block align-text-top me-2">
+            Control de Asistencia Escolar
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link text-white <%= currentPath == '/dashboard' ? 'active' : '' %>"
+                        href="/dashboard">Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white <%= currentPath == '/registro' ? 'active' : '' %>"
+                        href="/registro">Registro</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white <%= currentPath == '/asistencia' ? 'active' : '' %>"
+                        href="/asistencia">Asistencia</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white <%= currentPath == '/estudiante' ? 'active' : '' %>"
+                        href="/estudiante">Estudiantes</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white <%= currentPath == '/reporte' ? 'active' : '' %>"
+                        href="/reporte">Reportes</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white <%= currentPath == '/marcar' ? 'active' : '' %>" href="/marcar">Marcar
+                        asistencia</a>
+                </li>
+                <% if (usuario) { %>
+                    <!-- Menú desplegable del usuario -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-white" href="#" id="navbarDropdown" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <%= usuario.nombreU %> <!-- Muestra el nombre del usuario logueado -->
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                            <li>
+                                <a class="dropdown-item <%= currentPath == '/usuarios' ? 'active' : '' %>"
+                                    href="/usuarios">
+                                    <i class="bi bi-people me-2"></i> Gestión de usuarios
+                                </a>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/auth/logout">
+                                    <i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <% } %>
+            </ul>
+        </div>
+    </div>
+</nav>

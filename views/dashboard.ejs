@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Control Asistencias</title>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <%- include('partials/navbar') %>
+        <main class="container mt-4 main-content">
+            <h2 class="mb-4 heading-color">Dashboard</h2>
+
+            <!-- Tarjetas de resumen -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center p-3">
+                        <i class="bi bi-people-fill fs-1 icon-primary"></i>
+                        <h3 id="totalEstudiantes">0</h3>
+                        <p class="text-muted">Total estudiantes</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center p-3">
+                        <i class="bi bi-check-circle-fill fs-1 icon-primary"></i>
+                        <h3 id="presentesHoy">0</h3>
+                        <p class="text-muted">Presentes hoy</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center p-3">
+                        <i class="bi bi-x-circle-fill fs-1 icon-primary"></i>
+                        <h3 id="ausentesHoy">0</h3>
+                        <p class="text-muted">Ausentes hoy</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center p-3">
+                        <i class="bi bi-calendar-week fs-1 icon-primary"></i>
+                        <h3 id="asistenciaSemanal">0%</h3>
+                        <p class="text-muted">Asistencia semanal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfica de ejemplo (placeholder) -->
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card p-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Asistencias de la semana</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="graficaSemanal" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    async function cargarGrafica() {
+                        const res = await fetch('/api/dashboard/semanal');
+                        const data = await res.json(); // espera { fechas: [], presentes: [], ausentes: [] }
+                        const ctx = document.getElementById('graficaSemanal').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: data.fechas,
+                                datasets: [
+                                    { label: 'Presentes', data: data.presentes, backgroundColor: '#198754' },
+                                    { label: 'Ausentes', data: data.ausentes, backgroundColor: '#dc3545' }
+                                ]
+                            },
+                            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+                        });
+                    }
+                    document.addEventListener('DOMContentLoaded', cargarGrafica);
+                </script>
+            </div>
+        </main>
+        <br>
+        <%- include('partials/footer') %>
+            <script src="/assets/js/bootstrap.bundle.min.js"></script>
+            <script>
+                // Resumen rápido desde la API
+                async function cargarResumen() {
+                    try {
+                        const res = await fetch('/api/dashboard');
+                        const datos = await res.json();
+                        document.getElementById('totalEstudiantes').textContent = datos.totalEstudiantes;
+                        document.getElementById('presentesHoy').textContent = datos.presentesHoy;
+                        document.getElementById('ausentesHoy').textContent = datos.ausentesHoy;
+                        document.getElementById('asistenciaSemanal').textContent = datos.asistenciaSemanal + '%';
+                    } catch (err) {
+                        console.error('Error al cargar resumen', err);
+                    }
+                }
+                document.addEventListener('DOMContentLoaded', cargarResumen);
+            </script>
+</body>
+
+</html>
