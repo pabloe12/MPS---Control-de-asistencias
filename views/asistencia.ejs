@@ -43,8 +43,8 @@
         <div class="card">
             <div class="card-body">
                 <table class="table table-hover">
-                    <thead><tr><th>#</th><th>Nombre</th><th>Grupo</th><th>Hora entrada</th><th>Estado</th><th>Acciones</th></tr></thead>
-                    <tbody id="tablaAsistencias"><tr><td colspan="6" class="text-center">Cargando...</td></tr></tbody>
+                    <thead><tr><th>#</th><th>Nombre</th><th>Grado</th><th>Grupo</th><th>Hora entrada</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="tablaAsistencias"><tr><td colspan="7" class="text-center">Cargando...</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -107,8 +107,8 @@
         async function cargarFiltros() {
             const res = await fetch('/api/grupos');
             const { grados, grupos } = await res.json();
-            filterGrado.innerHTML = '<option value="all">Todos</option>' + grados.map(g => `<option value="${g.replace('°','')}">${g}</option>`).join('');
-            filterGrupo.innerHTML = '<option value="all">Todos</option>' + grupos.map(g => `<option value="${g.split(' ')[1]}">${g}</option>`).join('');
+            filterGrado.innerHTML = '<option value="all">Todos</option>' + grados.map(g => `<option value="${g}">${g}°</option>`).join('');
+            filterGrupo.innerHTML = '<option value="all">Todos</option>' + grupos.map(g => `<option value="${g}">${g}</option>`).join('');
         }
 
         async function fetchAsistencias() {
@@ -125,14 +125,14 @@
                 renderTable(data);
                 updatePieChart(data);
             } catch (err) {
-                document.getElementById('tablaAsistencias').innerHTML = '<tr><td colspan="6">Error al cargar</td></tr>';
+                document.getElementById('tablaAsistencias').innerHTML = '<tr><td colspan="7">Error al cargar</td></tr>';
             }
         }
 
         function renderTable(rows) {
             const tbody = document.getElementById('tablaAsistencias');
             if (rows.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center">Sin registros</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">Sin registros</td></tr>';
                 return;
             }
             tbody.innerHTML = rows.map((row, i) => {
@@ -144,6 +144,7 @@
                     <tr>
                         <td>${i + 1}</td>
                         <td>${row.nombreA} ${row.apellidoP_Alumno} ${row.apellidoM_Alumno}</td>
+                        <td>${row.grado}°</td>
                         <td>${row.grupo}</td>
                         <td>${row.hora_entrada || ''}</td>
                         <td><span class="badge bg-${colorEstado}">${row.estado}</span></td>

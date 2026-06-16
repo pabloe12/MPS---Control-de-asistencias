@@ -12,24 +12,27 @@
     <main class="container mt-4 main-content">
         <h2 class="mb-4 heading-color">Gestión de estudiantes</h2>
         <div class="row mb-3">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="input-group">
                     <span class="input-group-text bg-light-custom"><i class="bi bi-search"></i></span>
                     <input type="text" class="form-control" placeholder="Buscar por nombre o matrícula..." id="busqueda">
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <select class="form-select" id="filtroGrado"><option value="">Todos los grados</option></select>
+            </div>
+            <div class="col-md-2">
                 <select class="form-select" id="filtroGrupo"><option value="">Todos los grupos</option></select>
             </div>
-            <div class="col-md-3 text-end">
+            <div class="col-md-4 text-end">
                 <a href="/registro" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Nuevo</a>
             </div>
         </div>
         <div class="card">
             <div class="card-body">
                 <table class="table table-hover">
-                    <thead><tr><th>Matrícula</th><th>Nombre</th><th>Grupo</th><th>Acciones</th></tr></thead>
-                    <tbody id="tablaEstudiantes"><tr><td colspan="4" class="text-center">Cargando...</td></tr></tbody>
+                    <thead><tr><th>Matrícula</th><th>Nombre</th><th>Grado</th><th>Grupo</th><th>Acciones</th></tr></thead>
+                    <tbody id="tablaEstudiantes"><tr><td colspan="5" class="text-center">Cargando...</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -46,7 +49,28 @@
               <div class="mb-3"><label>Nombre(s)</label><input type="text" id="editNombreA" class="form-control" required></div>
               <div class="mb-3"><label>Apellido Paterno</label><input type="text" id="editApellidoPA" class="form-control" required></div>
               <div class="mb-3"><label>Apellido Materno</label><input type="text" id="editApellidoMA" class="form-control" required></div>
-              <div class="mb-3"><label>Grupo</label><input type="text" id="editGrupo" class="form-control" required></div>
+              <div class="mb-3">
+                <label>Grado</label>
+                <select id="editGrado" class="form-select" required>
+                  <option value="1">1°</option>
+                  <option value="2">2°</option>
+                  <option value="3">3°</option>
+                  <option value="4">4°</option>
+                  <option value="5">5°</option>
+                  <option value="6">6°</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label>Grupo</label>
+                <select id="editGrupo" class="form-select" required>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                </select>
+              </div>
             </form>
           </div>
           <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="saveEstudianteBtn">Guardar</button></div>
@@ -62,30 +86,35 @@
             try {
                 const res = await fetch('/api/estudiante');
                 estudiantesData = await res.json();
-                const gruposSet = [...new Set(estudiantesData.map(e => e.grupo))];
+                const gradosSet = [...new Set(estudiantesData.map(e => e.grado))].sort((a, b) => a - b);
+                const gruposSet = [...new Set(estudiantesData.map(e => e.grupo))].sort();
+                document.getElementById('filtroGrado').innerHTML = '<option value="">Todos los grados</option>' + gradosSet.map(g => `<option value="${g}">${g}°</option>`).join('');
                 document.getElementById('filtroGrupo').innerHTML = '<option value="">Todos los grupos</option>' + gruposSet.map(g => `<option value="${g}">${g}</option>`).join('');
                 renderTabla();
             } catch (err) {
-                document.getElementById('tablaEstudiantes').innerHTML = '<tr><td colspan="4">Error al cargar estudiantes.</td></tr>';
+                document.getElementById('tablaEstudiantes').innerHTML = '<tr><td colspan="5">Error al cargar estudiantes.</td></tr>';
             }
         }
         function renderTabla() {
             const busqueda = document.getElementById('busqueda').value.toLowerCase();
+            const gradoFiltro = document.getElementById('filtroGrado').value;
             const grupoFiltro = document.getElementById('filtroGrupo').value;
             const filtered = estudiantesData.filter(est => {
                 const nombreCompleto = `${est.nombreA} ${est.apellidoP_Alumno} ${est.apellidoM_Alumno}`.toLowerCase();
                 const matchBusqueda = est.matriculaA.toString().includes(busqueda) || nombreCompleto.includes(busqueda);
+                const matchGrado = gradoFiltro === '' || est.grado.toString() === gradoFiltro;
                 const matchGrupo = grupoFiltro === '' || est.grupo === grupoFiltro;
-                return matchBusqueda && matchGrupo;
+                return matchBusqueda && matchGrado && matchGrupo;
             });
             const tbody = document.getElementById('tablaEstudiantes');
             tbody.innerHTML = filtered.map(est => `
                 <tr>
                     <td>${est.matriculaA}</td>
                     <td>${est.nombreA} ${est.apellidoP_Alumno} ${est.apellidoM_Alumno}</td>
+                    <td>${est.grado}°</td>
                     <td>${est.grupo}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary btn-editar" data-mat="${est.matriculaA}" data-nom="${est.nombreA}" data-ap="${est.apellidoP_Alumno}" data-am="${est.apellidoM_Alumno}" data-grupo="${est.grupo}"><i class="bi bi-pencil"></i> Editar</button>
+                        <button class="btn btn-sm btn-outline-primary btn-editar" data-mat="${est.matriculaA}" data-nom="${est.nombreA}" data-ap="${est.apellidoP_Alumno}" data-am="${est.apellidoM_Alumno}" data-grado="${est.grado}" data-grupo="${est.grupo}"><i class="bi bi-pencil"></i> Editar</button>
                         <button class="btn btn-sm btn-outline-danger btn-eliminar" data-mat="${est.matriculaA}"><i class="bi bi-trash"></i> Eliminar</button>
                     </td>
                 </tr>
@@ -97,6 +126,7 @@
                     document.getElementById('editNombreA').value = btn.dataset.nom;
                     document.getElementById('editApellidoPA').value = btn.dataset.ap;
                     document.getElementById('editApellidoMA').value = btn.dataset.am;
+                    document.getElementById('editGrado').value = btn.dataset.grado;
                     document.getElementById('editGrupo').value = btn.dataset.grupo;
                     new bootstrap.Modal(document.getElementById('editEstudianteModal')).show();
                 });
@@ -117,6 +147,7 @@
                 nombreA: document.getElementById('editNombreA').value,
                 apellidoPA: document.getElementById('editApellidoPA').value,
                 apellidoMA: document.getElementById('editApellidoMA').value,
+                grado: document.getElementById('editGrado').value,
                 grupo: document.getElementById('editGrupo').value
             };
             const res = await fetch(`/api/estudiante/${mat}`, {
@@ -130,6 +161,7 @@
             } else alert('Error al actualizar');
         });
         document.getElementById('busqueda').addEventListener('input', renderTabla);
+        document.getElementById('filtroGrado').addEventListener('change', renderTabla);
         document.getElementById('filtroGrupo').addEventListener('change', renderTabla);
         document.addEventListener('DOMContentLoaded', cargarEstudiantes);
     </script>

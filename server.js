@@ -2,6 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
+const cron = require('node-cron');
+const helmet = require('helmet');
+const moment = require('moment-timezone');
+const pool = require('./config/db');
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
@@ -16,6 +20,12 @@ app.set('views', path.join(__dirname, 'views'));
 // Middlewares
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+
+// Seguridad: Headers y protección básica
+app.use(helmet({
+  contentSecurityPolicy: false, // Desactivar si usas CDNs externos para Chart.js/Bootstrap sin configurar
+}));
+
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/media', express.static(path.join(__dirname, 'media')));
 
@@ -49,6 +59,47 @@ app.use((req, res, next) => {
 app.use('/auth', authRoutes);
 app.use('/', pagesRoutes);
 app.use('/api', apiRoutes);
+
+// Programar tarea diaria a las 8:00 a.m. (hora México) para asignar faltas
+cron.schedule('0 8 * * *', async () => {
+  console.log('Ejecutando asignación de faltas automática...');
+  try {
+    const hoy = moment().tz('America/Mexico_City').format('YYYY-MM-DD');
+
+    // Buscar alumnos que no tengan registro de asistencia el día de hoy
+    const [alumnos] = await pool.execute(
+      `SELECT matriculaA FROM alumno 
+       WHERE matriculaA NOT IN (
+         SELECT matriculaA FROM asistencias WHERE fecha = ?
+       )`,
+      [hoy]
+    );
+
+    if (alumnos.length === 0) {
+      console.log('Todos los alumnos ya tienen asistencia registrada hoy.');
+      return;
+    }
+
+    // Obtener el primer usuario administrador activo para asociar el registro de la falta
+    const [admin] = await pool.execute('SELECT matriculaU FROM usuarios WHERE activo = 1 LIMIT 1');
+    const matriculaU = admin.length ? admin[0].matriculaU : 1;
+
+    for (const alumno of alumnos) {
+      await pool.execute(
+        'INSERT INTO asistencias (fecha, hora_entrada, estado, matriculaA, matriculaU) VALUES (?, ?, ?, ?, ?)',
+        [hoy, null, 'falta', alumno.matriculaA, matriculaU]
+      );
+    }
+    console.log(`Faltas asignadas correctamente a ${alumnos.length} alumnos.`);
+  } catch (error) {
+    console.error('Error en tarea programada de faltas:', error);
+  }
+}, {
+  scheduled: true,
+  timezone: "America/Mexico_City"
+});
+
+console.log('Servicio de cron para faltas automáticas inicializado.');
 
 // Manejo de errores 404
 app.use((req, res) => {

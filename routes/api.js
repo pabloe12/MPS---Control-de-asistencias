@@ -2,7 +2,15 @@ const express = require('express');
 const pool = require('../config/db');
 const PDFDocument = require('pdfkit');
 const bcrypt = require('bcryptjs');
+const moment = require('moment-timezone');
 const router = express.Router();
+
+// Configuración de reglas de negocio
+const ASISTENCIA_CONFIG = {
+  HORA_ENTRADA: '07:00:00',
+  HORA_RETARDO: '07:30:00',
+  ZONA_HORARIA: 'America/Mexico_City'
+};
 
 // Middleware de autenticación para API
 function authAPI(req, res, next) {
@@ -15,9 +23,10 @@ function authAPI(req, res, next) {
 // ==================== GRUPOS (para filtros dinámicos) ====================
 router.get('/grupos', authAPI, async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT DISTINCT grupo FROM alumno ORDER BY grupo');
-    const grupos = rows.map(r => r.grupo);
-    const grados = [...new Set(grupos.map(g => g.split(' ')[0]))];
+    const [gradosRows] = await pool.execute('SELECT DISTINCT grado FROM alumno ORDER BY grado');
+    const [gruposRows] = await pool.execute('SELECT DISTINCT grupo FROM alumno ORDER BY grupo');
+    const grados = gradosRows.map(r => r.grado);
+    const grupos = gruposRows.map(r => r.grupo);
     res.json({ grados, grupos });
   } catch (error) {
     console.error(error);
@@ -29,7 +38,7 @@ router.get('/grupos', authAPI, async (req, res) => {
 router.get('/estudiante', authAPI, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT matriculaA, nombreA, apellidoP_Alumno, apellidoM_Alumno, grupo FROM alumno'
+      'SELECT matriculaA, nombreA, apellidoP_Alumno, apellidoM_Alumno, grupo, grado FROM alumno'
     );
     res.json(rows);
   } catch (error) {
@@ -40,13 +49,17 @@ router.get('/estudiante', authAPI, async (req, res) => {
 
 router.post('/estudiante', authAPI, async (req, res) => {
   const {
-    nombreA, apellidoPA, apellidoMA, grupo, matricula,
+    nombreA, apellidoPA, apellidoMA, grado, grupo, matricula,
     tutor_nombre, tutor_apellidoP, tutor_apellidoM, tutor_telefono, tutor_telegram, tutor_parentesco
   } = req.body;
 
-  if (!nombreA || !apellidoPA || !apellidoMA || !grupo || !matricula ||
+  if (!nombreA || !apellidoPA || !apellidoMA || !grado || !grupo || !matricula ||
       !tutor_nombre || !tutor_apellidoP || !tutor_apellidoM || !tutor_telefono || !tutor_parentesco) {
     return res.status(400).json({ error: 'Faltan campos obligatorios' });
+  }
+
+  if (!grado || !grupo) {
+    return res.status(400).json({ error: 'Grado y grupo son obligatorios' });
   }
 
   if (!/^\d{7,}$/.test(tutor_telefono.replace(/\D/g, ''))) {
@@ -63,9 +76,9 @@ router.post('/estudiante', authAPI, async (req, res) => {
     );
     const id_tutor = tutorResult.insertId;
     await connection.execute(
-      `INSERT INTO alumno (matriculaA, nombreA, apellidoP_Alumno, apellidoM_Alumno, grupo, id_tutor)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [matricula, nombreA, apellidoPA, apellidoMA, grupo, id_tutor]
+      `INSERT INTO alumno (matriculaA, nombreA, apellidoP_Alumno, apellidoM_Alumno, grupo, grado, id_tutor)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [matricula, nombreA, apellidoPA, apellidoMA, grupo, grado, id_tutor]
     );
     await connection.commit();
     res.status(201).json({ message: 'Estudiante y tutor registrados correctamente', matriculaA: matricula });
@@ -83,11 +96,11 @@ router.post('/estudiante', authAPI, async (req, res) => {
 
 router.put('/estudiante/:matricula', authAPI, async (req, res) => {
   const { matricula } = req.params;
-  const { nombreA, apellidoPA, apellidoMA, grupo } = req.body;
+  const { nombreA, apellidoPA, apellidoMA, grado, grupo } = req.body;
   try {
     await pool.execute(
-      'UPDATE alumno SET nombreA=?, apellidoP_Alumno=?, apellidoM_Alumno=?, grupo=? WHERE matriculaA=?',
-      [nombreA, apellidoPA, apellidoMA, grupo, matricula]
+      'UPDATE alumno SET nombreA=?, apellidoP_Alumno=?, apellidoM_Alumno=?, grupo=?, grado=? WHERE matriculaA=?',
+      [nombreA, apellidoPA, apellidoMA, grupo, grado, matricula]
     );
     res.json({ message: 'Estudiante actualizado' });
   } catch (error) {
@@ -112,7 +125,7 @@ router.delete('/estudiante/:matricula', authAPI, async (req, res) => {
 router.get('/asistencia', authAPI, async (req, res) => {
   const { grado, grupo, fecha, hora, timeComparison } = req.query;
   let query = `SELECT a.id_asistencia, a.fecha, a.hora_entrada, a.estado, 
-               al.nombreA, al.apellidoP_Alumno, al.apellidoM_Alumno, al.grupo, al.matriculaA
+               al.nombreA, al.apellidoP_Alumno, al.apellidoM_Alumno, al.grado, al.grupo, al.matriculaA
                FROM asistencias a
                JOIN alumno al ON a.matriculaA = al.matriculaA
                WHERE 1=1`;
@@ -123,12 +136,12 @@ router.get('/asistencia', authAPI, async (req, res) => {
     params.push(fecha);
   }
   if (grado && grado !== 'all') {
-    query += ' AND al.grupo LIKE ?';
-    params.push(`${grado}%`);
+    query += ' AND al.grado = ?';
+    params.push(Number(grado));
   }
   if (grupo && grupo !== 'all') {
-    query += ' AND al.grupo LIKE ?';
-    params.push(`%${grupo}`);
+    query += ' AND al.grupo = ?';
+    params.push(grupo);
   }
   if (hora && hora !== '') {
     if (timeComparison === 'before') {
@@ -152,23 +165,43 @@ router.get('/asistencia', authAPI, async (req, res) => {
 });
 
 router.post('/asistencia', authAPI, async (req, res) => {
-  const { matriculaA, estado } = req.body;
-  if (!matriculaA || !estado) {
-    return res.status(400).json({ error: 'Matrícula y estado requeridos' });
+  const { matriculaA } = req.body; // ya no enviamos estado manualmente
+  if (!matriculaA) {
+    return res.status(400).json({ error: 'Matrícula requerida' });
   }
-  const estadosValidos = ['presente', 'falta', 'retardo'];
-  if (!estadosValidos.includes(estado)) {
-    return res.status(400).json({ error: 'Estado inválido' });
-  }
+
   try {
-    const now = new Date();
-    const fecha = now.toISOString().slice(0, 10);
-    const hora_entrada = now.toTimeString().slice(0, 8);
+    // Obtener hora actual en zona horaria de México
+    const now = moment().tz(ASISTENCIA_CONFIG.ZONA_HORARIA);
+    const fecha = now.format('YYYY-MM-DD');
+    const hora = now.format('HH:mm:ss');
+
+    // Determinar estado según la hora
+    let estado;
+    if (hora < ASISTENCIA_CONFIG.HORA_ENTRADA) {
+      estado = 'presente';
+    } else if (hora >= ASISTENCIA_CONFIG.HORA_ENTRADA && hora < ASISTENCIA_CONFIG.HORA_RETARDO) {
+      estado = 'retardo';
+    } else {
+      estado = 'presente'; // Después de 7:30 también se considera presente por registro manual tardío
+    }
+
+    // Verificar si ya tiene asistencia hoy
+    const [existing] = await pool.execute(
+      'SELECT id_asistencia FROM asistencias WHERE matriculaA = ? AND fecha = ?',
+      [matriculaA, fecha]
+    );
+
+    if (existing.length > 0) {
+      return res.status(409).json({ error: 'El alumno ya tiene asistencia registrada hoy' });
+    }
+
     await pool.execute(
       'INSERT INTO asistencias (fecha, hora_entrada, estado, matriculaA, matriculaU) VALUES (?, ?, ?, ?, ?)',
-      [fecha, hora_entrada, estado, matriculaA, req.session.usuario.matriculaU]
+      [fecha, hora, estado, matriculaA, req.session.usuario.matriculaU]
     );
-    res.status(201).json({ message: 'Asistencia registrada' });
+
+    res.status(201).json({ message: 'Asistencia registrada', estado });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al registrar asistencia' });
@@ -194,9 +227,9 @@ router.put('/asistencia/:id', authAPI, async (req, res) => {
 
 // ==================== REPORTES ====================
 router.get('/reporte/semanal', authAPI, async (req, res) => {
-  const { grupo, fechaInicio, fechaFin } = req.query;
-  if (!grupo || !fechaInicio || !fechaFin) {
-    return res.status(400).json({ error: 'Grupo y fechas requeridas' });
+  const { grado, grupo, fechaInicio, fechaFin } = req.query;
+  if (!grado || !grupo || !fechaInicio || !fechaFin) {
+    return res.status(400).json({ error: 'Grado, grupo y fechas requeridas' });
   }
   try {
     const [rows] = await pool.execute(
@@ -204,9 +237,9 @@ router.get('/reporte/semanal', authAPI, async (req, res) => {
               a.fecha, a.estado
        FROM alumno al
        LEFT JOIN asistencias a ON al.matriculaA = a.matriculaA AND a.fecha BETWEEN ? AND ?
-       WHERE al.grupo = ?
+       WHERE al.grado = ? AND al.grupo = ?
        ORDER BY al.apellidoP_Alumno, al.apellidoM_Alumno, a.fecha`,
-      [fechaInicio, fechaFin, grupo]
+      [fechaInicio, fechaFin, grado, grupo]
     );
     res.json(rows);
   } catch (error) {
@@ -216,8 +249,8 @@ router.get('/reporte/semanal', authAPI, async (req, res) => {
 });
 
 router.get('/reporte/semanal/pdf', authAPI, async (req, res) => {
-  const { grupo, fechaInicio, fechaFin } = req.query;
-  if (!grupo || !fechaInicio || !fechaFin) {
+  const { grado, grupo, fechaInicio, fechaFin } = req.query;
+  if (!grado || !grupo || !fechaInicio || !fechaFin) {
     return res.status(400).json({ error: 'Faltan parámetros' });
   }
   try {
@@ -226,9 +259,9 @@ router.get('/reporte/semanal/pdf', authAPI, async (req, res) => {
               a.fecha, a.estado
        FROM alumno al
        LEFT JOIN asistencias a ON al.matriculaA = a.matriculaA AND a.fecha BETWEEN ? AND ?
-       WHERE al.grupo = ?
+       WHERE al.grado = ? AND al.grupo = ?
        ORDER BY al.apellidoP_Alumno, al.apellidoM_Alumno, a.fecha`,
-      [fechaInicio, fechaFin, grupo]
+      [fechaInicio, fechaFin, grado, grupo]
     );
 
     const alumnos = {};
@@ -264,11 +297,12 @@ router.get('/reporte/semanal/pdf', authAPI, async (req, res) => {
     doc.moveDown();
     doc.font('Helvetica').fontSize(10);
 
-    const start = new Date(fechaInicio);
-    const end = new Date(fechaFin);
+    // Iteración de días usando moment para evitar desfases de zona horaria
+    const start = moment.tz(fechaInicio, ASISTENCIA_CONFIG.ZONA_HORARIA);
+    const end = moment.tz(fechaFin, ASISTENCIA_CONFIG.ZONA_HORARIA);
     const days = [];
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      days.push(d.toISOString().slice(0, 10));
+    for (let m = moment(start); m.isSameOrBefore(end); m.add(1, 'days')) {
+      days.push(m.format('YYYY-MM-DD'));
     }
 
     for (const alumno of Object.values(alumnos)) {

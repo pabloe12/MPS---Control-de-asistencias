@@ -20,10 +20,16 @@
                 <div class="card-body">
                     <form id="formReporte">
                         <div class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-md-2">
+                                <label class="form-label">Grado</label>
+                                <select class="form-select" name="grado" id="grado" required>
+                                    <option value="">Grados...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label">Grupo</label>
                                 <select class="form-select" name="grupo" id="grupo" required>
-                                    <option value="">Cargando grupos...</option>
+                                    <option value="">Grupos...</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -64,32 +70,37 @@
         <%- include('partials/footer') %>
             <script src="/assets/js/bootstrap.bundle.min.js"></script>
             <script>
-                // a) Poblar el selector de grupos dinámicamente
-                async function cargarGrupos() {
+                // a) Poblar los selectores de grado y grupo dinámicamente desde la nueva API
+                async function cargarFiltrosReporte() {
                     try {
-                        const res = await fetch('/api/estudiante');
-                        const estudiantes = await res.json();
-                        const grupos = [...new Set(estudiantes.map(e => e.grupo))];
-                        const select = document.getElementById('grupo');
-                        select.innerHTML = '<option value="">Seleccione grupo</option>' +
+                        const res = await fetch('/api/grupos');
+                        const { grados, grupos } = await res.json();
+                        const gradoSelect = document.getElementById('grado');
+                        const grupoSelect = document.getElementById('grupo');
+                        
+                        gradoSelect.innerHTML = '<option value="">Seleccione grado</option>' + 
+                            grados.map(g => `<option value="${g}">${g}°</option>`).join('');
+                        
+                        grupoSelect.innerHTML = '<option value="">Seleccione grupo</option>' + 
                             grupos.map(g => `<option value="${g}">${g}</option>`).join('');
                     } catch (error) {
-                        console.error('Error al cargar grupos:', error);
+                        console.error('Error al cargar filtros:', error);
                     }
                 }
 
                 // b) Implementar botón "Ver reporte"
                 document.getElementById('btnVerReporte').addEventListener('click', async () => {
+                    const grado = document.getElementById('grado').value;
                     const grupo = document.getElementById('grupo').value;
                     const inicio = document.getElementById('fechaInicio').value;
                     const fin = document.getElementById('fechaFin').value;
 
-                    if (!grupo || !inicio || !fin) {
+                    if (!grado || !grupo || !inicio || !fin) {
                         return alert('Por favor, complete todos los campos (Grupo, Fecha Inicio y Fin)');
                     }
 
                     try {
-                        const res = await fetch(`/api/reporte/semanal?grupo=${encodeURIComponent(grupo)}&fechaInicio=${inicio}&fechaFin=${fin}`);
+                        const res = await fetch(`/api/reporte/semanal?grado=${grado}&grupo=${encodeURIComponent(grupo)}&fechaInicio=${inicio}&fechaFin=${fin}`);
                         const data = await res.json();
                         mostrarReporte(data, grupo, inicio, fin);
                     } catch (error) {
@@ -114,7 +125,7 @@
                 });
 
                 // Cargar grupos al iniciar
-                document.addEventListener('DOMContentLoaded', cargarGrupos);
+                document.addEventListener('DOMContentLoaded', cargarFiltrosReporte);
 
                 function mostrarReporte(datos, grupo, inicio, fin) {
                     document.getElementById('tituloReporte').textContent = `Vista previa - Asistencias ${grupo} (${inicio} / ${fin})`;
