@@ -20,6 +20,11 @@ function authAPI(req, res, next) {
   next();
 }
 
+//Verificacion de usuario
+function validarNombreUsuario(username) {
+  return /^[a-zA-Z0-9_]{3,20}$/.test(username);
+}
+
 // ==================== GRUPOS (para filtros dinámicos) ====================
 router.get('/grupos', authAPI, async (req, res) => {
   try {
@@ -391,6 +396,9 @@ router.post('/usuario', authAPI, async (req, res) => {
   if (!nombre || !apellidoP || !apellidoM || !contrasena) {
     return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
+  if (!validarNombreUsuario(nombre)) {
+    return res.status(400).json({ error: 'Nombre inválido (solo letras, números y guión bajo, de 3 a 20 caracteres)' });
+  }
   if (contrasena.length < 6) {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
   }
@@ -411,6 +419,16 @@ router.post('/usuario', authAPI, async (req, res) => {
 router.put('/usuario/:id', authAPI, async (req, res) => {
   const { id } = req.params;
   const { nombre, apellidoP, apellidoM, contrasena } = req.body;
+  // Validación de formato
+  if (nombre && !validarNombreUsuario(nombre)) {
+    return res.status(400).json({ error: 'Nombre inválido' });
+  }
+  if (apellidoP && !validarNombreUsuario(apellidoP)) {
+    return res.status(400).json({ error: 'Apellido Paterno inválido' });
+  }
+  if (apellidoM && !validarNombreUsuario(apellidoM)) {
+    return res.status(400).json({ error: 'Apellido Materno inválido' });
+  }
   try {
     let query = 'UPDATE usuarios SET nombreU = ?, apellidoP_Usuario = ?, apellidoM_Usuario = ?';
     const params = [nombre, apellidoP, apellidoM];

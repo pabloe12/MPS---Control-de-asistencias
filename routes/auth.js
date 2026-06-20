@@ -3,13 +3,22 @@ const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
 
+// Función para validar formato de nombre de usuario (solo letras, números y guión bajo, de 3 a 20 caracteres)
+function validarNombreUsuario(username) {
+  return /^[a-zA-Z0-9_]{3,20}$/.test(username);
+}
+
 router.get('/login', (req, res) => {
   if (req.session.usuario) return res.redirect('/dashboard');
   res.render('login', { error: null });
 });
 
 router.post('/login', async (req, res) => {
+  // VALIDACIÓN DE FORMATO
   const { username, password } = req.body;
+  if (!validarNombreUsuario(username)) {
+    return res.render('login', { error: 'Usuario inválido (solo letras, números y guión bajo, de 3 a 20 caracteres)' });
+  }
   if (!username || !password) {
     return res.render('login', { error: 'Usuario y contraseña son requeridos' });
   }
