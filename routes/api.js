@@ -22,7 +22,7 @@ function authAPI(req, res, next) {
 
 //Verificacion de usuario
 function validarNombreUsuario(username) {
-  return /^[a-zA-Z0-9_]{3,20}$/.test(username);
+return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{2,50}$/.test(nombre);
 }
 
 // ==================== GRUPOS (para filtros dinámicos) ====================

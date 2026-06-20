@@ -5,8 +5,7 @@ const router = express.Router();
 
 // Función para validar formato de nombre de usuario (solo letras, números y guión bajo, de 3 a 20 caracteres)
 function validarNombreUsuario(username) {
-  return /^[a-zA-Z0-9_]{3,20}$/.test(username);
-}
+return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{2,50}$/.test(nombre);}
 
 router.get('/login', (req, res) => {
   if (req.session.usuario) return res.redirect('/dashboard');
