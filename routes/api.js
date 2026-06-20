@@ -21,8 +21,8 @@ function authAPI(req, res, next) {
 }
 
 //Verificacion de usuario
-function validarNombreUsuario(username) {
-return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{2,50}$/.test(nombre);
+function validarNombreUsuario(valor) {
+  return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-_]{2,50}$/.test(valor);
 }
 
 // ==================== GRUPOS (para filtros dinámicos) ====================
